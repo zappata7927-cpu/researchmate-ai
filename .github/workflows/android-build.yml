@@ -21,8 +21,10 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # GitHub-hosted ubuntu runners ship the Android SDK preinstalled
+      # (ANDROID_HOME=/usr/local/lib/android/sdk, licenses accepted);
+      # AGP auto-provisions any missing platform/build-tools, so no
+      # setup-android step is needed (its sdkmanager call is flaky).
 
       - name: Build debug APK
         working-directory: android

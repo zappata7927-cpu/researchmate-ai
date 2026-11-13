@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ResearchMate AI | پژوهش‌یار هوشمند
+// Designer: Seyed Mojtaba Kazemi — Faculty of Nursing,
+// Behbahan Faculty of Medical Sciences
+// ============================================================
+
+model Project {
+  id              String   @id @default(cuid())
+  title           String
+  // requested review kind: proposal | manuscript
+  reviewKind      String   @default("proposal")
+  // detected/confirmed type: proposal | manuscript | protocol | systematic_review | case_report | thesis | other
+  docType         String   @default("unknown")
+  docTypeSource   String   @default("pending") // heuristic | ai | user
+  docTypeConfirmed Boolean @default(false)
+  language        String   @default("fa") // fa | en | mixed
+  status          String   @default("uploaded") // uploaded | extracting | extracted | analyzing | ready | error
+  statusMessage   String?
+  targetJournal   String?
+  articleType     String?
+  researchField   String?
+  // aggregated score snapshot (JSON string) for fast history lists
+  totalScore      Float?
+  subscores       String?
+  recommendation  String?
+  criticalCount   Int      @default(0)
+  majorCount      Int      @default(0)
+  minorCount      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  documents       Document[]
+  reviews         Review[]
+  revisions       Revision[]
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  kind      String   @default("main") // main | supplementary
+  mime      String
+  size      Int      @default(0)
+  pages     Int?
+  language  String?
+  text      String?
+  notes     String? // extraction warnings (honest reporting)
+  status    String   @default("pending") // pending | ok | partial | failed | unsupported
+  createdAt DateTime @default(now())
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // engine: classification | proposal | manuscript | stats | references | journal | reviewers | reports | response_letter
+  engine    String
+  version   String   @default("1")
+  payload   String // structured JSON result
+  createdAt DateTime @default(now())
+}
+
+model Revision {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issueId      String?
+  issueTitle   String?
+  originalText String
+  revisedText  String
+  rationale    String?
+  // proposed | accepted | rejected | edited
+  status       String   @default("proposed")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Setting {
+  id                String   @id @default("main")
+  proposalWeights   String // JSON: [{key,label,weight}]
+  manuscriptWeights String // JSON: [{key,label,weight}]
+  language          String   @default("fa")
+  updatedAt         DateTime @updatedAt
+}

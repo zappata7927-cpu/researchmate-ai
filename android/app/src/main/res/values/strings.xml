@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">پژوهش‌یار هوشمند</string>
+    <string name="menu_change_server">تغییر آدرس سرور</string>
+    <string name="menu_reload">بارگذاری مجدد</string>
+    <string name="menu_open_browser">بازکردن در مرورگر</string>
+    <string name="dialog_server_title">آدرس سرور سامانه</string>
+    <string name="dialog_server_message">آدرس کامل سروری که برنامه وب «پژوهش‌یار هوشمند» روی آن مستقر شده است را وارد کنید (بدون اسلش انتها).</string>
+    <string name="dialog_server_hint">https://researchmate.example.com</string>
+    <string name="dialog_ok">ذخیره و اتصال</string>
+    <string name="dialog_cancel">انصراف</string>
+    <string name="download_started">دانلود آغاز شد…</string>
+    <string name="cannot_open_file_picker">انتخاب فایل ممکن نیست</string>
+</resources>

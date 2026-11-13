@@ -16,7 +16,7 @@ import {
   Sparkles,
   ScanText,
 } from "lucide-react";
-import { api, DOC_STATUS_FA } from "@/lib/client";
+import { api, apiLong, DOC_STATUS_FA } from "@/lib/client";
 import { LoadingPanel, Banner, StatusChip } from "./ui-bits";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -109,7 +109,7 @@ export function NewReviewView({ mode }: { mode: NewMode }) {
     if (!result) return;
     setClassifying(true);
     try {
-      const res = await api(`/api/projects/${result.project.id}/classify`, { method: "POST" });
+      const res = await apiLong(`/api/projects/${result.project.id}/classify`, { method: "POST" });
       setClassification(res.classification);
       setDocType(res.classification.docType);
       toast.success("نوع سند با هوش مصنوعی تشخیص داده شد.");
@@ -136,10 +136,12 @@ export function NewReviewView({ mode }: { mode: NewMode }) {
         window.location.hash = `#/project/${result.project.id}`;
         return;
       }
-      await api(`/api/projects/${result.project.id}/review`, {
+      // reference verification has its own dedicated (async) route
+      const path = engine === "references" ? `/api/projects/${result.project.id}/references` : `/api/projects/${result.project.id}/review`;
+      await apiLong(path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ engine }),
+        body: JSON.stringify(engine === "references" ? {} : { engine }),
       });
       toast.success("تحلیل کامل شد.");
       window.location.hash = `#/project/${result.project.id}`;

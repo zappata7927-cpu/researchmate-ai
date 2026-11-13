@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { AIConfigError } from "@/lib/ai";
 import { runRevisionProposals } from "@/lib/engines/base";
+import { runAsync } from "@/lib/jobs";
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
@@ -56,30 +57,45 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (issues.length === 0) {
       return NextResponse.json({ error: "ایراد مهمی برای تولید بازنگری وجود ندارد." }, { status: 400 });
     }
-    await db.project.update({ where: { id }, data: { status: "analyzing", statusMessage: "تولید پیشنهادهای بازنگری…" } });
-    const { data } = await runRevisionProposals(text, issues);
 
-    const created: any[] = [];
-    for (const item of data.items || []) {
-      const row = await db.revision.create({
-        data: {
-          projectId: id,
-          issueTitle: item.issueTitle || null,
-          originalText: item.originalText || "",
-          revisedText: item.revisedText || "",
-          rationale: [item.problems ? "نقص‌ها: " + item.problems : "", item.rationale ? "دلیل علمی: " + item.rationale : ""].filter(Boolean).join("\n"),
-          status: "proposed",
-        },
-      });
-      created.push(row);
+    async function runGenerateTask(): Promise<{ engine: string; revisions: any[]; notes?: string }> {
+      try {
+        await db.project.update({ where: { id }, data: { status: "analyzing", statusMessage: "تولید پیشنهادهای بازنگری…" } });
+        const { data } = await runRevisionProposals(text, issues);
+
+        const created: any[] = [];
+        for (const item of data.items || []) {
+          const row = await db.revision.create({
+            data: {
+              projectId: id,
+              issueTitle: item.issueTitle || null,
+              originalText: item.originalText || "",
+              revisedText: item.revisedText || "",
+              rationale: [item.problems ? "نقص‌ها: " + item.problems : "", item.rationale ? "دلیل علمی: " + item.rationale : ""].filter(Boolean).join("\n"),
+              status: "proposed",
+            },
+          });
+          created.push(row);
+        }
+        await db.review.create({
+          data: { projectId: id, engine: "revision_plan", payload: JSON.stringify({ notes: data.notes, generated: created.length }) },
+        });
+        await db.project.update({ where: { id }, data: { status: "ready", statusMessage: null } });
+        return { engine: "revision", revisions: created, notes: data.notes };
+      } catch (e: any) {
+        await db.project.update({ where: { id }, data: { status: "error", statusMessage: String(e?.message || e).slice(0, 300) } }).catch(() => null);
+        throw e;
+      }
     }
-    await db.review.create({
-      data: { projectId: id, engine: "revision_plan", payload: JSON.stringify({ notes: data.notes, generated: created.length }) },
-    });
-    await db.project.update({ where: { id }, data: { status: "ready", statusMessage: null } });
-    return NextResponse.json({ engine: "revision", revisions: created, notes: data.notes });
+
+    if (body?.async === true) {
+      const { jobId } = runAsync(() => runGenerateTask());
+      return NextResponse.json({ jobId }, { status: 202 });
+    }
+
+    const result = await runGenerateTask();
+    return NextResponse.json(result);
   } catch (e: any) {
-    await db.project.update({ where: { id }, data: { status: "error", statusMessage: String(e?.message || e).slice(0, 300) } }).catch(() => null);
     const status = e instanceof AIConfigError ? 503 : 500;
     return NextResponse.json({ error: String(e?.message || e).slice(0, 400) }, { status });
   }

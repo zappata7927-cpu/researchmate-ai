@@ -17,6 +17,46 @@ export async function api<T = any>(path: string, init?: RequestInit): Promise<T>
   return body as T;
 }
 
+/**
+ * apiLong — same contract as `api()`, but resilient to proxy/gateway timeouts.
+ *
+ * The request is sent with `async: true`; long-running AI routes answer
+ * immediately with `{ jobId }` and the work continues server-side. This
+ * helper then polls GET /api/jobs/[id] until the job settles and resolves
+ * with the very same payload the sync endpoint would have returned.
+ */
+export async function apiLong<T = any>(path: string, init?: RequestInit): Promise<T> {
+  let initBody: any = {};
+  if (init?.body) {
+    try {
+      initBody = JSON.parse(String(init.body));
+    } catch {
+      initBody = {};
+    }
+  }
+  const headers = { "Content-Type": "application/json", ...((init?.headers as any) || {}) };
+  const first = await api<{ jobId?: string }>(path, { ...init, headers, body: JSON.stringify({ ...initBody, async: true }) });
+
+  if (!first || typeof first.jobId !== "string") return first as T; // short route answered directly
+
+  const POLL_MS = 3000;
+  const MAX_WAIT_MS = 20 * 60 * 1000; // generous ceiling; server jobs self-terminate
+  const deadline = Date.now() + MAX_WAIT_MS;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, POLL_MS));
+    const job = await api<{ done: boolean; error?: string | null; payload?: any }>(`/api/jobs/${first.jobId}`);
+    if (job.done) {
+      if (job.error) {
+        const err = new Error(job.error) as any;
+        err.status = 500;
+        throw err;
+      }
+      return (job.payload ?? { ok: true }) as T;
+    }
+  }
+  throw new Error("زمان انتظار برای پردازش به پایان رسید؛ لطفاً صفحه را بازخوانی کنید — نتیجه معمولاً در پروژه ذخیره شده است.");
+}
+
 export function faNum(n: number | string | null | undefined): string {
   if (n === null || n === undefined || n === "") return "—";
   return String(n).replace(/[0-9]/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);

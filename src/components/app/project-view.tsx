@@ -23,6 +23,7 @@ import {
 import { Radar, RadarChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import {
   api,
+  apiLong,
   CATEGORY_FA,
   DOC_STATUS_FA,
   DOC_TYPE_FA,
@@ -107,10 +108,12 @@ export function ProjectView({ id }: { id: string }) {
   const runEngine = async (engine: string) => {
     setBusy(engine);
     try {
-      await api(`/api/projects/${id}/review`, {
+      // Reference verification runs in its own dedicated (async) route.
+      const path = engine === "references" ? `/api/projects/${id}/references` : `/api/projects/${id}/review`;
+      await apiLong(path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ engine }),
+        body: JSON.stringify(engine === "references" ? {} : { engine }),
       });
       toast.success("تحلیل کامل شد.");
       await load();
@@ -134,7 +137,7 @@ export function ProjectView({ id }: { id: string }) {
   const generateRevisions = async () => {
     setBusy("revision-gen");
     try {
-      await api(`/api/projects/${id}/revisions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "generate" }) });
+      await apiLong(`/api/projects/${id}/revisions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "generate" }) });
       toast.success("پیشنهادهای بازنگری تولید شد.");
       await load();
     } catch (e: any) {
@@ -162,7 +165,7 @@ export function ProjectView({ id }: { id: string }) {
     setBusy("letter");
     try {
       const comments = extraComments.split("\n").filter((c) => c.trim());
-      await api(`/api/projects/${id}/response-letter`, {
+      await apiLong(`/api/projects/${id}/response-letter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ comments }),

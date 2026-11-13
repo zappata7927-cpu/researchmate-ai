@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { AIConfigError } from "@/lib/ai";
 import { runResponseLetter } from "@/lib/engines/base";
+import { runAsync } from "@/lib/jobs";
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const accepted = project.revisions.filter((r) => r.status === "accepted" || r.status === "edited");
   const changesMade = accepted.map((r) => `${r.issueTitle || "اصلاح"}: ${r.revisedText.slice(0, 400)}`);
 
-  try {
+  async function runLetterTask(): Promise<{ engine: string; payload: any }> {
     const { data } = await runResponseLetter(comments.slice(0, 25), changesMade, {
       title: project.title,
       language: project.language,
@@ -57,7 +58,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     };
     await db.review.create({ data: { projectId: id, engine: "response_letter", payload: JSON.stringify(payload) } });
-    return NextResponse.json({ engine: "response_letter", payload });
+    return { engine: "response_letter", payload };
+  }
+
+  if (body?.async === true) {
+    const { jobId } = runAsync(() => runLetterTask());
+    return NextResponse.json({ jobId }, { status: 202 });
+  }
+
+  try {
+    const result = await runLetterTask();
+    return NextResponse.json(result);
   } catch (e: any) {
     const status = e instanceof AIConfigError ? 503 : 500;
     return NextResponse.json({ error: String(e?.message || e).slice(0, 400) }, { status });

@@ -59,6 +59,26 @@ async function getZAI(): Promise<any> {
   return sdkPromise;
 }
 
+/** Hard ceiling for a single AI call. Prevents a stalled upstream from
+ * hanging a request until an intermediary proxy kills it with 502. */
+const AI_CALL_TIMEOUT_MS = Number(env("AI_CALL_TIMEOUT_MS")) || 300000;
+
+function withTimeout<T>(p: Promise<T>, label: string): Promise<T> {
+  let timer: any;
+  const gate = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () =>
+        reject(
+          new Error(
+            `${label} بیش از ${Math.round(AI_CALL_TIMEOUT_MS / 1000)} ثانیه طول کشید. اتصال شبکه/سرویس هوش مصنوعی را بررسی کرده و دوباره تلاش کنید.`
+          )
+        ),
+      AI_CALL_TIMEOUT_MS
+    );
+  });
+  return Promise.race([p, gate]).finally(() => clearTimeout(timer));
+}
+
 async function chatOpenAICompatible(messages: ChatMessage[]): Promise<AIResult> {
   const baseUrl = env("AI_BASE_URL")!;
   const apiKey = env("AI_API_KEY")!;
@@ -112,8 +132,9 @@ async function chatZAI(messages: ChatMessage[]): Promise<AIResult> {
 export async function chat(messages: ChatMessage[]): Promise<AIResult> {
   const status = aiStatus();
   if (!status.configured) throw new AIConfigError();
-  if (status.provider === "openai-compatible") return chatOpenAICompatible(messages);
-  return chatZAI(messages);
+  const label = "فراخوانی سرویس هوش مصنوعی";
+  if (status.provider === "openai-compatible") return withTimeout(chatOpenAICompatible(messages), label);
+  return withTimeout(chatZAI(messages), label);
 }
 
 /** Repair common JSON problems from LLM output: keys missing their closing

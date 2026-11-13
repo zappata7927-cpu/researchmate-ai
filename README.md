@@ -73,7 +73,7 @@ src/
 
 ```bash
 # پیش‌نیاز: Node.js 20+ (یا Bun)
-git clone <repo-url>
+git clone https://github.com/zappata7927-cpu/researchmate-ai.git
 cd researchmate-ai
 
 # ۱) نصب وابستگی‌ها
@@ -104,13 +104,13 @@ AI_MODEL=gpt-4o                              # یا glm-4.6 / llama3 / ...
 
 ## انتشار در گیت‌هاب
 
-```bash
-git remote add origin https://github.com/<username>/researchmate-ai.git
-git push -u origin main
-```
+این پروژه از مخزن زیر قابل دریافت است:
+
+**https://github.com/zappata7927-cpu/researchmate-ai**
 
 - فایل‌های حساس (`.env`، پایگاه‌داده، لاگ‌ها و اسناد آپلودی) از طریق `.gitignore` مستثنا هستند و به مخزن راه پیدا نمی‌کنند.
-- پس از اولین push، اکشن **«Build Android APK»** فعال می‌شود (توضیح در بخش اندروید).
+- اکشن **«Build Android APK»** روی مخزن فعال است: با هر تغییر در پوشه `android/` (یا اجرای دستی از تب Actions)، APK تازه ساخته و به‌عنوان Artifact قابل دانلود می‌شود.
+- نسخه‌های آماده در تب [Releases](https://github.com/zappata7927-cpu/researchmate-ai/releases) قرار می‌گیرند.
 
 ## استقرار سرور (خودتان میزبانی کنید)
 
@@ -143,13 +143,14 @@ HOSTNAME=0.0.0.0 PORT=3000 pm2 start .next/standalone/server.js --name researchm
 
 **سه راه دریافت APK:**
 
-1. **دانلود آماده:** فایل `ResearchMate-AI-debug.apk` کنار مخزن (Release) یا خروجی این پروژه را نصب کنید (Android 7 به بالا).
-2. **ساخت خودکار در GitHub Actions:** بعد از push، به تب **Actions → Build Android APK** بروید و فایل `ResearchMate-AI-Android` را دانلود کنید. با هر تغییر در پوشه `android/`، APK تازه ساخته می‌شود.
+1. **دانلود آماده (Release):** [ResearchMate-AI-Android-v1.0.0.apk](https://github.com/zappata7927-cpu/researchmate-ai/releases/download/v1.0.0/ResearchMate-AI-Android-v1.0.0.apk) را نصب کنید (اندروید ۷ به بالا؛ نسخهٔ امضاشدهٔ release).
+2. **ساخت خودکار در GitHub Actions:** به تب **Actions → Build Android APK** بروید و Artifact با نام `ResearchMate-AI-Android` را دانلود کنید. با هر تغییر در پوشه `android/`، APK تازه ساخته می‌شود.
 3. **بیلد محلی:**
 
 ```bash
 cd android
-./gradlew assembleDebug     # خروجی: app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleDebug      # خروجی: app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleRelease    # خروجی: app/build/outputs/apk/release/app-release.apk (امضاشده با کلید دیباگ همان دستگاه)
 ```
 
 > پیش‌فرضِ آدرس سرور در `MainActivity.java` (ثابت `DEFAULT_SERVER_URL`) قرار دارد؛ برای انتشار عمومی آن را به دامنه خودتان تغییر دهید یا همان منوی داخل اپ را به کاربران توصیه کنید.

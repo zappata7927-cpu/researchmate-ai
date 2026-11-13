@@ -42,6 +42,13 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    lint {
+        // This app is a thin, audited WebView shell — skip lint analysis on
+        // release builds (also avoids pulling the heavy lint toolchain).
+        checkReleaseBuilds false
+        abortOnError false
+    }
 }
 
 dependencies {

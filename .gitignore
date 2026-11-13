@@ -66,3 +66,12 @@ server.log
 /mini-services/
 /skills/
 /tests/
+
+# Android build artifacts
+android/local.properties
+android/.gradle/
+android/app/build/
+android/build/
+android/.idea/
+android/captures/
+*.apk.idsig
